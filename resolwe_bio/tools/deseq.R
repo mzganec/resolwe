@@ -17,7 +17,7 @@ conditions <- c(rep('control', length(args$controls)), rep('case', length(args$c
 sampleTable <- data.frame(condition=factor(conditions, levels=c('control', 'case')))
 
 if (args$format == 'rsem') {
-    txi <- tximport(files, type='rsem')
+    txi <- tximport(files, txOut=TRUE, txIdCol='transcript_id', abundanceCol='FPKM', countsCol='expected_count', lengthCol='effective_length', importer=read.delim)
     rownames(sampleTable) <- colnames(txi$counts)
     dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)
 } else {

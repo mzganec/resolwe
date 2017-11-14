@@ -1,5 +1,5 @@
 # pylint: disable=missing-docstring
-from resolwe.flow.models import Data
+from resolwe.flow.models import Data, Process
 from resolwe.test import tag_process
 
 from resolwe_bio.utils.test import BioProcessTestCase
@@ -63,6 +63,83 @@ class DiffExpProcessorTestCase(BioProcessTestCase):
         self.assertFileExists(diff_exp, 'raw')
         self.assertJSON(diff_exp, diff_exp.output['de_json'], '', 'deseq2.json.gz')
         self.assertFields(diff_exp, 'source', 'DICTYBASE')
+
+    @tag_process('differentialexpression-deseq2')
+    def test_deseq2_transcripts(self):
+        with self.preparation_stage():
+            # Mock RSEM process
+            process = Process.objects.create(
+                name='RSEM mock process',
+                requirements={
+                    'expression-engine': 'jinja',
+                    'resources': {
+                        'network': True,
+                    },
+                    'executor': {
+                        'docker': {
+                            'image': 'resolwebio/base:ubuntu-17.04',
+                        },
+                    },
+                },
+                contributor=self.contributor,
+                type='data:expression:rsem:',
+                input_schema=[
+                    {
+                        'name': 'transcripts',
+                        'type': 'basic:file:',
+                    },
+                ],
+                output_schema=[
+                    {
+                        'name': 'transcripts',
+                        'type': 'basic:file:',
+                    },
+                    {
+                        'name': 'source',
+                        'type': 'basic:string:',
+                    },
+                ],
+                run={
+                    'language': 'bash',
+                    'program': r"""
+re-import {{ transcripts.file_temp|default(transcripts.file) }} {{ transcripts.file }} "tab|gz" "tab" 1.0 compress
+re-save-file transcripts "${NAME}.tab.gz"
+re-save source DICTYBASE
+"""
+                }
+            )
+
+            inputs1 = {'transcripts': 'rsem_transcripts1.tab.gz'}
+            rsem1 = self.run_process(process.slug, inputs1)
+            self.assertFile(rsem1, 'transcripts', 'rsem_transcripts1.tab.gz', compression='gzip')
+
+            inputs2 = {'transcripts': 'rsem_transcripts2.tab.gz'}
+            rsem2 = self.run_process(process.slug, inputs2)
+            self.assertFile(rsem2, 'transcripts', 'rsem_transcripts2.tab.gz', compression='gzip')
+
+            inputs3 = {'transcripts': 'rsem_transcripts3.tab.gz'}
+            rsem3 = self.run_process(process.slug, inputs3)
+            self.assertFile(rsem3, 'transcripts', 'rsem_transcripts3.tab.gz', compression='gzip')
+
+            inputs4 = {'transcripts': 'rsem_transcripts4.tab.gz'}
+            rsem4 = self.run_process(process.slug, inputs4)
+            self.assertFile(rsem4, 'transcripts', 'rsem_transcripts4.tab.gz', compression='gzip')
+
+        inputs = {
+            'case': [
+                rsem1.pk,
+                rsem4.pk,
+            ],
+            'control': [
+                rsem2.pk,
+                rsem3.pk,
+            ],
+            'filter': 0,
+        }
+        de_rsem = self.run_process('differentialexpression-deseq2', inputs)
+        self.assertFile(de_rsem, 'raw', 'deseq_rsem.tab.gz', compression='gzip')
+        self.assertJSON(de_rsem, de_rsem.output['de_json'], '', 'deseq_rsem.json.gz')
+        self.assertFields(de_rsem, 'source', 'DICTYBASE')
 
     @tag_process('differentialexpression-deseq2')
     def test_deseq2_source(self):

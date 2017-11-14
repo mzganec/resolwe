@@ -11,7 +11,7 @@
       docker:
         image: resolwebio/rnaseq:1.2.0
   data_name: 'Differential expression (case vs. control)'
-  version: 1.0.15
+  version: 1.0.16
   type: data:differentialexpression:deseq2
   category: analyses
   persistence: CACHED
@@ -73,8 +73,8 @@
       re-progress 0.1
 
       deseq.R \
-        --cases {% for c in case %} {{ c.rc.file if not rsem else c.genes.file }} {% endfor %} \
-        --controls {% for c in control %} {{ c.rc.file if not rsem else c.genes.file }} {% endfor %} \
+        --cases {% for c in case %} {{ c.rc.file if not rsem else c.transcripts.file }} {% endfor %} \
+        --controls {% for c in control %} {{ c.rc.file if not rsem else c.transcripts.file }} {% endfor %} \
         --min-count-sum {{ filter }} \
         {% if rsem %} --format rsem {% endif %}
       re-checkrc "Error computing differential expression (DESeq2)."
